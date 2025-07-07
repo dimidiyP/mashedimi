@@ -473,11 +473,12 @@ async def test_endpoint():
         "status": "ok",
         "message": "Integrated modular architecture is working!",
         "version": "2.0.0",
-        "settings_valid": settings.validate() if settings else False,
+        "modular_architecture": MODULAR_ARCHITECTURE_AVAILABLE,
+        "settings_valid": settings.validate() if MODULAR_ARCHITECTURE_AVAILABLE else "N/A",
         "features": {
-            "food_health": "✅ Анализ еды, профили здоровья, AI рекомендации",
-            "movie_expert": "✅ Фильмы, рекомендации, статистика",
-            "message_management": "✅ Автоудаление, теги, модерация",
+            "food_health": "✅ Анализ еды, профили здоровья, AI рекомендации" if MODULAR_ARCHITECTURE_AVAILABLE else "❌ Недоступно в legacy режиме",
+            "movie_expert": "✅ Фильмы, рекомендации, статистика" if MODULAR_ARCHITECTURE_AVAILABLE else "❌ Недоступно в legacy режиме",
+            "message_management": "✅ Автоудаление, теги, модерация" if MODULAR_ARCHITECTURE_AVAILABLE else "❌ Недоступно в legacy режиме",
             "legacy_compatibility": "✅ Поддержка существующих функций"
         }
     }

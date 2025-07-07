@@ -219,16 +219,21 @@ async def handle_legacy_callback_query(update: Update, context):
     query = update.callback_query
     await query.answer("⚠️ Legacy функция - используйте новые команды: /health, /movie, /topic")
 
-# Bot handlers mapping
-bot_handlers = {
-    "photo": food_health_handlers.handle_photo_message,
-    "callback_query": handle_callback_query_routing,
-    "health_menu": food_health_handlers.handle_health_profile_menu,
-    "movie_menu": movie_expert_handlers.handle_movie_menu,
-    "topic_settings": message_management_handlers.handle_topic_settings_menu,
-    "message_mention": message_management_handlers.handle_message_with_bot_mention,
-    "message_processing": message_management_handlers.handle_automatic_message_processing
-}
+# Bot handlers mapping (only if modular architecture is available)
+if MODULAR_ARCHITECTURE_AVAILABLE:
+    bot_handlers = {
+        "photo": food_health_handlers.handle_photo_message,
+        "callback_query": handle_callback_query_routing,
+        "health_menu": food_health_handlers.handle_health_profile_menu,
+        "movie_menu": movie_expert_handlers.handle_movie_menu,
+        "topic_settings": message_management_handlers.handle_topic_settings_menu,
+        "message_mention": message_management_handlers.handle_message_with_bot_mention,
+        "message_processing": message_management_handlers.handle_automatic_message_processing
+    }
+else:
+    bot_handlers = {
+        "callback_query": handle_callback_query_routing
+    }
 
 @app.on_event("startup")
 async def startup_event():

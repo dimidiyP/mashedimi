@@ -55,9 +55,7 @@ except ImportError as e:
     # Define fallback constants
     ADMIN_IDS = [139373848]  # Fallback admin ID
 
-# Configure logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+
 
 # FastAPI app
 app = FastAPI(title="Telegram Bot with Modular Architecture", version="2.0.0")

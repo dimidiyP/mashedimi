@@ -349,18 +349,18 @@ async def route_update(update: Update):
         # Route based on update type
         if update.message:
             # Handle automatic message processing first (for filters, auto-deletion, etc.)
-            if update.message.text and not update.message.text.startswith('/'):
+            if MODULAR_ARCHITECTURE_AVAILABLE and update.message.text and not update.message.text.startswith('/'):
                 await bot_handlers["message_processing"](update, context)
             
-            if update.message.photo:
+            if update.message.photo and MODULAR_ARCHITECTURE_AVAILABLE:
                 # Photo message - route to food analysis
                 await bot_handlers["photo"](update, context)
                 
             elif update.message.text:
                 text = update.message.text.lower()
                 
-                # Check for bot mentions
-                if any(mention in text for mention in ["@dmplove_bot", "@DMPlove_bot"]):
+                # Check for bot mentions (only if modular architecture is available)
+                if MODULAR_ARCHITECTURE_AVAILABLE and any(mention in text for mention in ["@dmplove_bot", "@DMPlove_bot"]):
                     response_type = await bot_handlers["message_mention"](update, context)
                     
                     # Route based on response type
@@ -373,21 +373,21 @@ async def route_update(update: Update):
                     else:
                         await handle_general_ai_response(update, context, text)
                 
-                # Direct commands
-                elif text.startswith('/health') or any(keyword in text for keyword in ["здоровье", "профиль"]):
+                # Direct commands (only if modular architecture is available)
+                elif MODULAR_ARCHITECTURE_AVAILABLE and (text.startswith('/health') or any(keyword in text for keyword in ["здоровье", "профиль"])):
                     await bot_handlers["health_menu"](update, context)
                     
-                elif text.startswith('/movie') or text.startswith('/movies'):
+                elif MODULAR_ARCHITECTURE_AVAILABLE and (text.startswith('/movie') or text.startswith('/movies')):
                     await bot_handlers["movie_menu"](update, context)
                     
-                elif text.startswith('/topic') or "настройки топика" in text:
+                elif MODULAR_ARCHITECTURE_AVAILABLE and (text.startswith('/topic') or "настройки топика" in text):
                     await bot_handlers["topic_settings"](update, context)
                 
-                # Movie conversations
-                elif any(indicator in text for indicator in ["посмотрел", "посмотрела", "оценка", "/10"]):
+                # Movie conversations (only if modular architecture is available)
+                elif MODULAR_ARCHITECTURE_AVAILABLE and any(indicator in text for indicator in ["посмотрел", "посмотрела", "оценка", "/10"]):
                     await movie_expert_handlers.handle_movie_message(update, context)
                     
-                elif any(keyword in text for keyword in ["фильм", "кино", "сериал", "рекомендации"]):
+                elif MODULAR_ARCHITECTURE_AVAILABLE and any(keyword in text for keyword in ["фильм", "кино", "сериал", "рекомендации"]):
                     if any(keyword in text for keyword in ["поиск", "найди"]):
                         # Movie search
                         search_query = text.replace("поиск", "").replace("найди", "").replace("фильм", "").strip()

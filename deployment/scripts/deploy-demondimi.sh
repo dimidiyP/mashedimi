@@ -30,12 +30,12 @@ echo "🚀 Starting deployment to $DOMAIN..."
 
 # Function to run commands on VPS
 run_on_vps() {
-    sshpass -p "$VPS_PASSWORD" ssh -o StrictHostKeyChecking=no "$VPS_USER@$VPS_HOST" "$1"
+    sshpass -p "$VPS_PASSWORD" ssh -o StrictHostKeyChecking=no -o PreferredAuthentications=password -o PubkeyAuthentication=no "$VPS_USER@$VPS_HOST" "$1"
 }
 
 # Function to copy files to VPS
 copy_to_vps() {
-    sshpass -p "$VPS_PASSWORD" scp -o StrictHostKeyChecking=no -r "$1" "$VPS_USER@$VPS_HOST:$2"
+    sshpass -p "$VPS_PASSWORD" scp -o StrictHostKeyChecking=no -o PreferredAuthentications=password -o PubkeyAuthentication=no -r "$1" "$VPS_USER@$VPS_HOST:$2"
 }
 
 echo "📋 Step 1: Preparing VPS environment..."

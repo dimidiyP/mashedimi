@@ -334,10 +334,14 @@ async def route_update(update: Update):
         # Create context object
         class Context:
             def __init__(self):
-                try:
-                    self.bot = bot_core.get_bot()
-                except:
-                    # Fallback to creating bot directly
+                if MODULAR_ARCHITECTURE_AVAILABLE:
+                    try:
+                        self.bot = bot_core.get_bot()
+                    except:
+                        # Fallback to creating bot directly
+                        self.bot = Bot(token=os.getenv("TELEGRAM_TOKEN"))
+                else:
+                    # Legacy mode
                     self.bot = Bot(token=os.getenv("TELEGRAM_TOKEN"))
                 
         context = Context()

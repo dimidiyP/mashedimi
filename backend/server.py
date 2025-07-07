@@ -152,9 +152,13 @@ async def get_user_role(user_id: int) -> str:
         return user_access_list[user_id]["role"]
     return None
 
-# Callback query routing function
 async def handle_callback_query_routing(update: Update, context):
     """Route callback queries to appropriate handlers"""
+    if not MODULAR_ARCHITECTURE_AVAILABLE:
+        # Fallback to legacy handling
+        await handle_legacy_callback_query(update, context)
+        return
+        
     query = update.callback_query
     data = query.data
     

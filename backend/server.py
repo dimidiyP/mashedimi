@@ -293,12 +293,17 @@ async def webhook_handler(request: Request):
         
         # Create Update object
         from telegram import Update
-        try:
-            update = Update.de_json(update_data, bot_core.get_bot())
-        except:
-            # Fallback to legacy handling if modular bot not available
-            logger.warning("Using legacy webhook handling")
-            return await legacy_webhook_handler(update_data)
+        if MODULAR_ARCHITECTURE_AVAILABLE:
+            try:
+                update = Update.de_json(update_data, bot_core.get_bot())
+            except:
+                # Fallback to legacy handling if modular bot not available
+                logger.warning("Using legacy webhook handling")
+                return await legacy_webhook_handler(update_data)
+        else:
+            # Legacy mode - create basic bot
+            bot = Bot(token=os.getenv("TELEGRAM_TOKEN"))
+            update = Update.de_json(update_data, bot)
         
         if not update:
             return {"status": "error", "message": "Invalid update"}

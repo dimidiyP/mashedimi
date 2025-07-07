@@ -275,7 +275,10 @@ async def startup_event():
             logger.info("📱 Running in legacy mode - modular features disabled")
         
         logger.info("🚀 Telegram Bot Server started successfully")
-        logger.info("📱 Features: Food/Health AI, Movie Expert, Message Management")
+        if MODULAR_ARCHITECTURE_AVAILABLE:
+            logger.info("📱 Features: Food/Health AI, Movie Expert, Message Management")
+        else:
+            logger.info("📱 Legacy mode: Basic functionality only")
         
     except Exception as e:
         logger.error(f"❌ Startup error: {e}")

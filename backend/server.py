@@ -526,16 +526,24 @@ async def health_check():
         # Check database connection
         db_status = "ok"
         try:
-            db_manager.connect()
+            if MODULAR_ARCHITECTURE_AVAILABLE:
+                db_manager.connect()
+            else:
+                # Legacy database check
+                await mongodb_manager.connect()
         except:
             db_status = "error"
         
         # Check bot status
         bot_status = "ok"
         try:
-            bot = bot_core.get_bot()
-            if not bot:
-                bot_status = "error"
+            if MODULAR_ARCHITECTURE_AVAILABLE:
+                bot = bot_core.get_bot()
+                if not bot:
+                    bot_status = "error"
+            else:
+                # Legacy bot check
+                bot = Bot(token=os.getenv("TELEGRAM_TOKEN"))
         except:
             bot_status = "error"
         

@@ -21,6 +21,10 @@ from dotenv import load_dotenv
 # Load environment variables
 load_dotenv()
 
+# Configure logging first
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
 # Add paths for modular imports
 sys.path.append('/app')
 sys.path.append('/app/backend')
@@ -34,14 +38,22 @@ from openai_reliability import init_reliable_openai_client, get_reliable_openai_
 from user_experience import ux_manager, feedback_collector
 from debug_system import init_debug_mode, get_debug_logger, is_debug_mode
 
-# New modular architecture imports
-from config.settings import settings
-from config.database import db_manager
-from config.constants import ADMIN_IDS
-from core.bot import bot_core
-from features.food_health.handlers import FoodHealthHandlers
-from features.movie_expert.handlers import MovieExpertHandlers
-from features.message_management.handlers import MessageManagementHandlers
+# Try to import modular architecture (optional for backward compatibility)
+try:
+    from config.settings import settings
+    from config.database import db_manager
+    from config.constants import ADMIN_IDS
+    from core.bot import bot_core
+    from features.food_health.handlers import FoodHealthHandlers
+    from features.movie_expert.handlers import MovieExpertHandlers
+    from features.message_management.handlers import MessageManagementHandlers
+    MODULAR_ARCHITECTURE_AVAILABLE = True
+    logger.info("🏗️ Modular architecture loaded successfully")
+except ImportError as e:
+    MODULAR_ARCHITECTURE_AVAILABLE = False
+    logger.warning(f"⚠️ Modular architecture not available, running in legacy mode: {e}")
+    # Define fallback constants
+    ADMIN_IDS = [139373848]  # Fallback admin ID
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)

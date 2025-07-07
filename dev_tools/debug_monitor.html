@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🐛 Debug Monitor - Telegram Bot</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+            background: #1a1a1a;
+            color: #e0e0e0;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: #2d2d2d;
+            border-radius: 10px;
+        }
+        .status-card {
+            background: #2d2d2d;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-left: 4px solid #00ff88;
+        }
+        .status-card.error {
+            border-left-color: #ff4444;
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        .stat-item {
+            background: #3d3d3d;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+        }
+        .stat-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #00ff88;
+        }
+        .stat-label {
+            font-size: 12px;
+            color: #aaa;
+            text-transform: uppercase;
+        }
+        .interactions-log {
+            background: #2d2d2d;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .interaction-item {
+            background: #3d3d3d;
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 5px;
+            border-left: 3px solid #00ff88;
+        }
+        .interaction-item.error {
+            border-left-color: #ff4444;
+        }
+        .interaction-time {
+            font-size: 11px;
+            color: #888;
+        }
+        .controls {
+            background: #2d2d2d;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+        .btn {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+            font-size: 14px;
+        }
+        .btn.danger {
+            background: #f44336;
+        }
+        .btn.warning {
+            background: #ff9800;
+        }
+        .btn:hover {
+            opacity: 0.8;
+        }
+        .live-indicator {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            background: #00ff88;
+            border-radius: 50%;
+            animation: pulse 1s infinite;
+        }
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+        .performance-chart {
+            background: #2d2d2d;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+        .response-time {
+            color: #00ff88;
+        }
+        .response-time.slow {
+            color: #ff9800;
+        }
+        .response-time.very-slow {
+            color: #ff4444;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🐛 Debug Monitor</h1>
+            <p>Мониторинг отладки Telegram бота в реальном времени</p>
+            <span class="live-indicator"></span> LIVE
+        </div>
+
+        <div class="controls">
+            <h3>Управление отладкой</h3>
+            <button class="btn" onclick="enableDebug()">🟢 Включить отладку</button>
+            <button class="btn warning" onclick="disableDebug()">🟡 Выключить отладку</button>
+            <button class="btn danger" onclick="clearDebugData()">🗑️ Очистить данные</button>
+            <button class="btn" onclick="exportReport()">📊 Экспорт отчета</button>
+            <button class="btn" onclick="refreshData()">🔄 Обновить</button>
+        </div>
+
+        <div id="status-container">
+            <!-- Статус будет загружен динамически -->
+        </div>
+
+        <div class="stats-grid" id="stats-container">
+            <!-- Статистика будет загружена динамически -->
+        </div>
+
+        <div class="performance-chart">
+            <h3>📈 Производительность</h3>
+            <div id="performance-container">
+                <!-- Метрики производительности -->
+            </div>
+        </div>
+
+        <div class="interactions-log">
+            <h3>📋 Последние взаимодействия</h3>
+            <div id="interactions-container">
+                <!-- Логи взаимодействий -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let debugData = null;
+        let autoRefresh = null;
+
+        // Загрузить статус отладки
+        async function loadDebugStatus() {
+            try {
+                const response = await fetch('/api/debug/status');
+                const data = await response.json();
+                
+                const statusContainer = document.getElementById('status-container');
+                
+                if (data.debug_mode) {
+                    statusContainer.innerHTML = `
+                        <div class="status-card">
+                            <h3>✅ Режим отладки активен</h3>
+                            <p>Все взаимодействия записываются и анализируются</p>
+                        </div>
+                    `;
+                    
+                    // Загрузить детальные данные
+                    loadDebugReport();
+                } else {
+                    statusContainer.innerHTML = `
+                        <div class="status-card error">
+                            <h3>❌ Режим отладки выключен</h3>
+                            <p>Включите режим отладки для мониторинга взаимодействий</p>
+                        </div>
+                    `;
+                    
+                    // Очистить другие контейнеры
+                    document.getElementById('stats-container').innerHTML = '';
+                    document.getElementById('interactions-container').innerHTML = '';
+                    document.getElementById('performance-container').innerHTML = '';
+                }
+            } catch (error) {
+                console.error('Error loading debug status:', error);
+                document.getElementById('status-container').innerHTML = `
+                    <div class="status-card error">
+                        <h3>❌ Ошибка загрузки</h3>
+                        <p>${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+
+        // Загрузить полный отчет отладки
+        async function loadDebugReport() {
+            try {
+                const response = await fetch('/api/debug/report');
+                const data = await response.json();
+                
+                if (data.error) {
+                    throw new Error(data.error);
+                }
+                
+                debugData = data;
+                
+                // Обновить статистику
+                updateStats(data.summary);
+                
+                // Обновить взаимодействия
+                updateInteractions(data.users_data);
+                
+                // Обновить производительность
+                updatePerformance(data.summary);
+                
+            } catch (error) {
+                console.error('Error loading debug report:', error);
+            }
+        }
+
+        // Обновить статистику
+        function updateStats(summary) {
+            const statsContainer = document.getElementById('stats-container');
+            
+            statsContainer.innerHTML = `
+                <div class="stat-item">
+                    <div class="stat-value">${summary.total_interactions}</div>
+                    <div class="stat-label">Всего взаимодействий</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value">${summary.error_count}</div>
+                    <div class="stat-label">Ошибки</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value">${(summary.error_rate * 100).toFixed(1)}%</div>
+                    <div class="stat-label">Процент ошибок</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value">${summary.avg_response_time.toFixed(2)}s</div>
+                    <div class="stat-label">Среднее время ответа</div>
+                </div>
+            `;
+        }
+
+        // Обновить взаимодействия
+        function updateInteractions(usersData) {
+            const container = document.getElementById('interactions-container');
+            
+            let allInteractions = [];
+            
+            // Собрать все взаимодействия
+            for (const [userId, userData] of Object.entries(usersData)) {
+                for (const interaction of userData.interactions) {
+                    allInteractions.push({...interaction, username: userData.username});
+                }
+            }
+            
+            // Сортировать по времени (новые первыми)
+            allInteractions.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+            
+            // Показать последние 20
+            const recentInteractions = allInteractions.slice(0, 20);
+            
+            container.innerHTML = recentInteractions.map(interaction => {
+                const time = new Date(interaction.timestamp).toLocaleTimeString();
+                const errorClass = interaction.error ? 'error' : '';
+                const responseTimeClass = getResponseTimeClass(interaction.response_time);
+                
+                return `
+                    <div class="interaction-item ${errorClass}">
+                        <div class="interaction-time">${time} - @${interaction.username}</div>
+                        <div><strong>${interaction.interaction_type}</strong></div>
+                        ${interaction.response_time ? `<div class="response-time ${responseTimeClass}">⏱️ ${interaction.response_time.toFixed(2)}s</div>` : ''}
+                        ${interaction.error ? `<div style="color: #ff4444;">❌ ${interaction.error}</div>` : ''}
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // Обновить производительность
+        function updatePerformance(summary) {
+            const container = document.getElementById('performance-container');
+            
+            const performanceClass = getResponseTimeClass(summary.avg_response_time);
+            
+            container.innerHTML = `
+                <div class="stat-item">
+                    <div class="stat-value ${performanceClass}">${summary.avg_response_time.toFixed(2)}s</div>
+                    <div class="stat-label">Среднее время ответа</div>
+                </div>
+                <div style="margin-top: 15px;">
+                    <h4>Типы взаимодействий:</h4>
+                    ${Object.entries(summary.interaction_types).map(([type, count]) => 
+                        `<div>• ${type}: ${count}</div>`
+                    ).join('')}
+                </div>
+            `;
+        }
+
+        // Определить класс для времени ответа
+        function getResponseTimeClass(responseTime) {
+            if (responseTime > 10) return 'very-slow';
+            if (responseTime > 5) return 'slow';
+            return '';
+        }
+
+        // Включить отладку
+        async function enableDebug() {
+            try {
+                const response = await fetch('/api/debug/toggle/on');
+                const data = await response.json();
+                
+                if (data.success) {
+                    alert('✅ Режим отладки включен');
+                    loadDebugStatus();
+                    startAutoRefresh();
+                } else {
+                    alert('❌ Ошибка: ' + data.error);
+                }
+            } catch (error) {
+                alert('❌ Ошибка: ' + error.message);
+            }
+        }
+
+        // Выключить отладку
+        async function disableDebug() {
+            try {
+                const response = await fetch('/api/debug/toggle/off');
+                const data = await response.json();
+                
+                if (data.success) {
+                    alert('⚠️ Режим отладки выключен');
+                    loadDebugStatus();
+                    stopAutoRefresh();
+                } else {
+                    alert('❌ Ошибка: ' + data.error);
+                }
+            } catch (error) {
+                alert('❌ Ошибка: ' + error.message);
+            }
+        }
+
+        // Очистить данные отладки
+        async function clearDebugData() {
+            if (!confirm('Вы уверены, что хотите очистить все данные отладки?')) {
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/debug/clear', { method: 'POST' });
+                const data = await response.json();
+                
+                if (data.success) {
+                    alert('✅ Данные отладки очищены');
+                    loadDebugStatus();
+                } else {
+                    alert('❌ Ошибка: ' + data.error);
+                }
+            } catch (error) {
+                alert('❌ Ошибка: ' + error.message);
+            }
+        }
+
+        // Экспорт отчета
+        async function exportReport() {
+            if (!debugData) {
+                alert('Нет данных для экспорта');
+                return;
+            }
+            
+            const dataStr = JSON.stringify(debugData, null, 2);
+            const dataBlob = new Blob([dataStr], {type: 'application/json'});
+            const url = URL.createObjectURL(dataBlob);
+            
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `debug_report_${new Date().toISOString().slice(0, 19)}.json`;
+            link.click();
+            
+            URL.revokeObjectURL(url);
+        }
+
+        // Обновить данные
+        function refreshData() {
+            loadDebugStatus();
+        }
+
+        // Автообновление
+        function startAutoRefresh() {
+            if (autoRefresh) return;
+            
+            autoRefresh = setInterval(() => {
+                loadDebugStatus();
+            }, 5000); // Каждые 5 секунд
+        }
+
+        function stopAutoRefresh() {
+            if (autoRefresh) {
+                clearInterval(autoRefresh);
+                autoRefresh = null;
+            }
+        }
+
+        // Инициализация
+        window.addEventListener('load', () => {
+            loadDebugStatus();
+            
+            // Если отладка включена, начать автообновление
+            setTimeout(() => {
+                if (debugData) {
+                    startAutoRefresh();
+                }
+            }, 1000);
+        });
+
+        // Остановить автообновление при закрытии страницы
+        window.addEventListener('beforeunload', stopAutoRefresh);
+    </script>
+</body>
+</html>

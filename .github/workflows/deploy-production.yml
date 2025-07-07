@@ -1,0 +1,183 @@
+name: Deploy to Production
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+          
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r backend/requirements.txt
+          
+      - name: Lint code
+        run: |
+          pip install flake8
+          flake8 backend/ --count --select=E9,F63,F7,F82 --show-source --statistics
+          
+      - name: Test configuration
+        run: |
+          cd backend
+          python -c "
+          import os
+          from dotenv import load_dotenv
+          # Test basic imports
+          import server
+          print('✅ Backend imports successfully')
+          "
+
+  deploy:
+    needs: test
+    runs-on: ubuntu-latest
+    environment: production
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Deploy to Production VPS
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: 83.222.18.104
+          username: root
+          key: ${{ secrets.PRODUCTION_SSH_KEY }}
+          timeout: 300s
+          script: |
+            echo "🚀 Starting deployment..."
+            
+            # Navigate to app directory
+            cd /opt/telegram-bot || {
+              echo "❌ App directory not found. Running initial setup..."
+              mkdir -p /opt/telegram-bot
+              cd /opt
+              git clone https://github.com/dimidiyP/mashedimi.git telegram-bot
+              cd telegram-bot
+            }
+            
+            # Pull latest changes
+            echo "📥 Pulling latest code..."
+            git pull origin main
+            
+            # Create backup
+            echo "📦 Creating backup..."
+            mkdir -p /opt/backups
+            cp -r /opt/telegram-bot /opt/backups/telegram-bot-$(date +%Y%m%d_%H%M%S) || true
+            
+            # Install/update dependencies
+            echo "📚 Installing dependencies..."
+            pip3 install -r backend/requirements.txt --upgrade
+            
+            # Deploy webhook PHP script
+            echo "📄 Deploying webhook script..."
+            mkdir -p /var/www/baseshinomontaz.store
+            cp deployment/webhook_proxy/baseshinomontaz_webhook.php /var/www/baseshinomontaz.store/webhook.php
+            chown -R www-data:www-data /var/www/baseshinomontaz.store/ || true
+            
+            # Update environment variables (if needed)
+            if [ ! -f backend/.env ]; then
+              echo "⚙️ Creating environment file..."
+              cat > backend/.env << EOF
+            TELEGRAM_TOKEN="${{ secrets.TELEGRAM_TOKEN }}"
+            OPENAI_API_KEY="${{ secrets.OPENAI_API_KEY }}"
+            MONGO_URL="mongodb://localhost:27017"
+            DB_NAME="telegram_bot_prod"
+            ENVIRONMENT="production"
+            EOF
+            fi
+            
+            # Restart application
+            echo "🔄 Restarting application..."
+            if systemctl is-active --quiet telegram-bot; then
+              systemctl restart telegram-bot
+            else
+              echo "⚙️ Starting telegram-bot service..."
+              systemctl start telegram-bot || {
+                echo "📝 Creating systemd service..."
+                cat > /etc/systemd/system/telegram-bot.service << EOF
+            [Unit]
+            Description=Telegram Family Bot
+            After=network.target
+            
+            [Service]
+            Type=simple
+            User=root
+            WorkingDirectory=/opt/telegram-bot
+            ExecStart=/usr/bin/python3 /opt/telegram-bot/backend/server.py
+            Restart=always
+            RestartSec=10
+            EnvironmentFile=/opt/telegram-bot/backend/.env
+            
+            [Install]
+            WantedBy=multi-user.target
+            EOF
+                systemctl daemon-reload
+                systemctl enable telegram-bot
+                systemctl start telegram-bot
+              }
+            fi
+            
+            # Wait for service to start
+            echo "⏳ Waiting for service to start..."
+            sleep 10
+            
+            # Check service status
+            if systemctl is-active --quiet telegram-bot; then
+              echo "✅ Service is running"
+              systemctl status telegram-bot --no-pager -l
+            else
+              echo "❌ Service failed to start"
+              systemctl status telegram-bot --no-pager -l
+              journalctl -u telegram-bot --no-pager -l -n 50
+              exit 1
+            fi
+            
+            # Update webhook
+            echo "📡 Updating Telegram webhook..."
+            response=$(curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_TOKEN }}/setWebhook" \
+              -H "Content-Type: application/json" \
+              -d '{"url": "https://baseshinomontaz.store/webhook.php"}')
+            
+            if echo "$response" | grep -q '"ok":true'; then
+              echo "✅ Webhook updated successfully"
+            else
+              echo "⚠️ Webhook update response: $response"
+            fi
+            
+            # Health check
+            echo "🏥 Running health check..."
+            if curl -f -s "https://baseshinomontaz.store/health" > /dev/null; then
+              echo "✅ Health endpoint is responding"
+            else
+              echo "⚠️ Health endpoint check failed"
+            fi
+            
+            # Test webhook endpoint
+            echo "🧪 Testing webhook endpoint..."
+            webhook_response=$(curl -s -X POST "https://baseshinomontaz.store/webhook.php" \
+              -H "Content-Type: application/json" \
+              -d '{"test": "deployment"}')
+            echo "Webhook test response: $webhook_response"
+            
+            echo "🎉 Deployment completed successfully!"
+            
+      - name: Notify deployment status
+        if: always()
+        run: |
+          if [ "${{ job.status }}" == "success" ]; then
+            echo "✅ Deployment successful to production (83.222.18.104)"
+          else
+            echo "❌ Deployment failed"
+            exit 1
+          fi

@@ -252,24 +252,27 @@ async def startup_event():
         # Initialize reliability systems
         init_reliable_openai_client()
         
-        # Validate modular settings
-        if not settings.validate():
-            logger.warning("Some modular settings are invalid, using legacy configuration")
-        
-        # Initialize modular database
-        db_manager.connect()
-        
-        # Initialize bot core
-        try:
-            telegram_app = bot_core.initialize()
+        # Validate modular settings (only if available)
+        if MODULAR_ARCHITECTURE_AVAILABLE:
+            if not settings.validate():
+                logger.warning("Some modular settings are invalid, using legacy configuration")
             
-            # Register handlers
-            for handler_name, handler_func in bot_handlers.items():
-                bot_core.register_handler(handler_name, handler_func)
+            # Initialize modular database
+            db_manager.connect()
             
-            logger.info("✅ Modular architecture initialized successfully")
-        except Exception as e:
-            logger.warning(f"Modular bot initialization failed, using legacy mode: {e}")
+            # Initialize bot core
+            try:
+                telegram_app = bot_core.initialize()
+                
+                # Register handlers
+                for handler_name, handler_func in bot_handlers.items():
+                    bot_core.register_handler(handler_name, handler_func)
+                
+                logger.info("✅ Modular architecture initialized successfully")
+            except Exception as e:
+                logger.warning(f"Modular bot initialization failed, using legacy mode: {e}")
+        else:
+            logger.info("📱 Running in legacy mode - modular features disabled")
         
         logger.info("🚀 Telegram Bot Server started successfully")
         logger.info("📱 Features: Food/Health AI, Movie Expert, Message Management")

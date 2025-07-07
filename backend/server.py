@@ -75,10 +75,16 @@ app.add_middleware(
 group_topic_settings = {}
 user_access_list = {}
 
-# Initialize modular components
-food_health_handlers = FoodHealthHandlers()
-movie_expert_handlers = MovieExpertHandlers()
-message_management_handlers = MessageManagementHandlers()
+# Initialize modular components only if available
+if MODULAR_ARCHITECTURE_AVAILABLE:
+    food_health_handlers = FoodHealthHandlers()
+    movie_expert_handlers = MovieExpertHandlers()
+    message_management_handlers = MessageManagementHandlers()
+else:
+    # Create dummy handlers for legacy mode
+    food_health_handlers = None
+    movie_expert_handlers = None
+    message_management_handlers = None
 
 # MongoDB connection for legacy compatibility
 class MongoDBManager:

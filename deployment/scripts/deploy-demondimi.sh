@@ -39,13 +39,26 @@ echo "📡 Testing SSH connection..."
 
 # Function to run commands on VPS
 run_on_vps() {
-    sshpass -p "$VPS_PASSWORD" ssh -o StrictHostKeyChecking=no -o PreferredAuthentications=password -o PubkeyAuthentication=no "$VPS_USER@$VPS_HOST" "$1"
+    sshpass -p "$VPS_PASSWORD" ssh -o StrictHostKeyChecking=no -o PreferredAuthentications=password -o PubkeyAuthentication=no -o ConnectTimeout=10 "$VPS_USER@$VPS_HOST" "$1"
 }
 
 # Function to copy files to VPS
 copy_to_vps() {
-    sshpass -p "$VPS_PASSWORD" scp -o StrictHostKeyChecking=no -o PreferredAuthentications=password -o PubkeyAuthentication=no -r "$1" "$VPS_USER@$VPS_HOST:$2"
+    sshpass -p "$VPS_PASSWORD" scp -o StrictHostKeyChecking=no -o PreferredAuthentications=password -o PubkeyAuthentication=no -o ConnectTimeout=10 -r "$1" "$VPS_USER@$VPS_HOST:$2"
 }
+
+# Test SSH connection
+echo "📡 Testing SSH connection to $VPS_HOST..."
+if ! sshpass -p "$VPS_PASSWORD" ssh -o StrictHostKeyChecking=no -o PreferredAuthentications=password -o PubkeyAuthentication=no -o ConnectTimeout=10 "$VPS_USER@$VPS_HOST" "echo 'SSH connection successful'"; then
+    echo "❌ SSH connection failed!"
+    echo "   Please check:"
+    echo "   - Server is accessible: $VPS_HOST"
+    echo "   - Username is correct: $VPS_USER"
+    echo "   - Password is correct"
+    echo "   - SSH service is running on server"
+    exit 1
+fi
+echo "✅ SSH connection successful"
 
 echo "📋 Step 1: Preparing VPS environment..."
 

@@ -13,6 +13,14 @@ DOMAIN="demondimi.ru"
 BOT_DIR="/var/www/telegram-bot"
 WEBHOOK_DIR="/var/www/$DOMAIN/bot"
 
+# Check for required tools
+if ! command -v sshpass &> /dev/null; then
+    echo "❌ Error: sshpass is required but not installed"
+    echo "   Install with: sudo apt-get install sshpass (Ubuntu/Debian)"
+    echo "   Or: brew install sshpass (macOS)"
+    exit 1
+fi
+
 # Check required environment variables
 if [ -z "$OPENAI_API_KEY" ]; then
     echo "❌ Error: OPENAI_API_KEY environment variable is required"
@@ -27,6 +35,7 @@ if [ -z "$TELEGRAM_TOKEN" ]; then
 fi
 
 echo "🚀 Starting deployment to $DOMAIN..."
+echo "📡 Testing SSH connection..."
 
 # Function to run commands on VPS
 run_on_vps() {
